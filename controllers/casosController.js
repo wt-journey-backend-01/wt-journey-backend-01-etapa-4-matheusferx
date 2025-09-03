@@ -6,14 +6,27 @@ function isValidStatus(status) {
   return status === 'aberto' || status === 'solucionado';
 }
 
+// controllers/casosController.js
 async function index(req, res) {
   const { agente_id, status, q } = req.query;
+
+  if (status && !['aberto', 'fechado', 'em_andamento'].includes(status)) {
+    return res.status(400).json({ message: 'Status inválido' });
+  }
+
+  if (agente_id && isNaN(Number(agente_id))) {
+    return res.status(400).json({ message: 'agente_id inválido' });
+  }
+
   const casos = await casosRepository.findAll({ agente_id, status, q });
   res.status(200).json(casos);
 }
 
 async function show(req, res) {
   const id = Number(req.params.id);
+  if (Number.isNaN(id)) {
+    return res.status(404).json({ message: "ID inválido" });
+  }
   const caso = await casosRepository.findById(id);
   if (!caso) return res.status(404).send();
   res.status(200).json(caso);

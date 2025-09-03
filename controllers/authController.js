@@ -12,32 +12,52 @@ function isStrongPassword(pwd) {
 }
 
 async function register(req, res) {
+  const allowedFields = ["nome", "email", "senha"];
+  const extraFields = Object.keys(req.body).filter(
+    (key) => !allowedFields.includes(key)
+  );
+
+  if (extraFields.length > 0) {
+    return res.status(400).json({
+      status: 400,
+      message: "Parâmetros inválidos",
+      errors: extraFields.map((field) => ({
+        [field]: "Campo não é permitido",
+      })),
+    });
+  }
+
   const { nome, email, senha } = req.body;
   const errors = [];
+
   if (!nome) errors.push({ nome: "Campo 'nome' é obrigatório" });
   if (!email) errors.push({ email: "Campo 'email' é obrigatório" });
   if (!senha) errors.push({ senha: "Campo 'senha' é obrigatório" });
+
   if (senha && !isStrongPassword(senha)) {
     errors.push({
       senha:
         "A senha deve ter no mínimo 8 caracteres, com ao menos 1 minúscula, 1 maiúscula, 1 número e 1 caractere especial",
     });
   }
+
   if (errors.length) return badRequest(res, errors);
 
   const exists = await usuariosRepository.findByEmail(email);
   if (exists) {
     return res.status(400).json({
       status: 400,
-      message: 'Parâmetros inválidos',
-      errors: [{ email: 'E-mail já está em uso' }],
+      message: "Parâmetros inválidos",
+      errors: [{ email: "E-mail já está em uso" }],
     });
   }
 
   const senhaHash = await bcrypt.hash(senha, SALT_ROUNDS);
-  const user = await usuariosRepository.create({ nome, email, senhaHash });
-  // por segurança, nunca retorne senha:
+  const user = await usuariosRepository.create({ nome, email, senha: senhaHash });
+
+  // por segurança, nunca retorne senha
   delete user.senha;
+
   return res.status(201).json(user);
 }
 
@@ -90,9 +110,17 @@ async function deleteUser(req, res) {
   return res.status(204).send();
 }
 
+async function getProfile(req, res) {
+  const user = await usuariosRepository.findById(req.user.id);
+  if (!user) return res.status(404).json({ message: 'Usuário não encontrado' });
+  delete user.senha;
+  res.status(200).json(user);
+}
+
 module.exports = {
   register,
   login,
   logout,
   deleteUser,
+  getProfile
 };

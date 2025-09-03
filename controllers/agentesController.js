@@ -18,6 +18,9 @@ async function index(req, res) {
 
 async function show(req, res) {
   const id = Number(req.params.id);
+  if (Number.isNaN(id)) {
+    return res.status(404).json({ message: "ID inválido" });
+  }
   const agent = await agentesRepository.findById(id);
   if (!agent) return res.status(404).send();
   res.status(200).json(agent);
