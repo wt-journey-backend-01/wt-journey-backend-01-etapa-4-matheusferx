@@ -1,255 +1,229 @@
 <sup>Esse é um feedback gerado por IA, ele pode conter erros.</sup>
 
-Você tem 5 créditos restantes para usar o sistema de feedback AI.
+Você tem 4 créditos restantes para usar o sistema de feedback AI.
 
 # Feedback para matheusferx:
 
-Nota final: **50.3/100**
+Nota final: **52.0/100**
 
-Olá, Matheus! 🚔✨ Que jornada intensa você teve na implementação dessa API segura para o Departamento de Polícia! Antes de tudo, parabéns por muitos acertos importantes e por ter avançado bastante na autenticação, proteção de rotas e estrutura do projeto. Vamos juntos destrinchar seu código para você entender onde pode melhorar e como deixar tudo redondinho! 💪🚀
+Olá, Matheusferx! 👋🚀
 
----
-
-## 🎉 Pontos Fortes e Conquistas Bônus
-
-- Seu código está muito bem organizado seguindo o padrão MVC, com controllers, repositories, rotas e middlewares separados. Isso é essencial para escalabilidade e manutenção. 👏
-- A autenticação via JWT está implementada e funcionando para login, logout e proteção de rotas, o que é um grande avanço.
-- Você implementou o endpoint `/usuarios/me` para retornar dados do usuário autenticado, que é um bônus muito valioso.
-- A verificação do token JWT no middleware está correta, tratando erros de token ausente, malformado e expirado.
-- Seu tratamento de erros e validações para criação e login de usuários está bastante robusto, cobrindo campos obrigatórios e força da senha.
-- Os testes básicos de autenticação (registro, login, logout, deleção do usuário) passaram, mostrando que a base está sólida!
+Primeiramente, quero parabenizá-lo pelo empenho e pela dedicação neste desafio tão completo que envolve autenticação, segurança e uma API REST robusta com Express e PostgreSQL! 🎉 Você conseguiu implementar várias funcionalidades importantes, especialmente no módulo de usuários, autenticação via JWT, logout e exclusão de usuários, o que é um baita avanço. Isso mostra que você entendeu conceitos essenciais de segurança e proteção de rotas — muito bom! 👏
 
 ---
 
-## 🚨 Testes que Falharam e Análise Detalhada dos Problemas
+### 🎯 O que deu certo? Seus pontos fortes!
 
-### 1. **Erro 400 ao tentar criar um usuário com e-mail já em uso**
-
-**Teste que falhou:**  
-`USERS: Recebe erro 400 ao tentar criar um usuário com e-mail já em uso`
-
-**Análise:**  
-No seu `authController.register()`, você chama o método `usuariosRepository.create()` da seguinte forma:
-
-```js
-const senhaHash = await bcrypt.hash(senha, SALT_ROUNDS);
-const user = await usuariosRepository.create({ nome, email, senha: senhaHash });
-```
-
-Mas, no seu `usuariosRepository.js`, o método `create` está definido assim:
-
-```js
-async function create({ nome, email, senhaHash }) {
-  const [id] = await db('usuarios')
-    .insert({ nome, email, senha: senhaHash })
-    .returning('id');
-  return findById(typeof id === 'object' ? id.id : id);
-}
-```
-
-Repare que você espera um parâmetro chamado `senhaHash` no repositório, mas no controller você está passando `senha`. Isso faz com que o campo `senha` no banco receba `undefined`, já que `senhaHash` nunca chega.
-
-**Consequência:**  
-- A senha não é salva corretamente.  
-- Pode causar falha na verificação de email duplicado, porque o hash não está sendo usado corretamente.  
-- Pode gerar erros inesperados ou falha ao tentar criar usuário com email existente.
-
-**Como corrigir:**  
-Alinhe os nomes dos parâmetros para que o controller envie `senhaHash` e o repositório receba `senhaHash`, ou ajuste o repositório para receber `senha` mesmo. Exemplo:
-
-No controller:
-
-```js
-const senhaHash = await bcrypt.hash(senha, SALT_ROUNDS);
-const user = await usuariosRepository.create({ nome, email, senhaHash });
-```
-
-Ou altere o repositório para:
-
-```js
-async function create({ nome, email, senha }) {
-  const [id] = await db('usuarios')
-    .insert({ nome, email, senha })
-    .returning('id');
-  return findById(typeof id === 'object' ? id.id : id);
-}
-```
+- **Autenticação de usuários** (registro, login, logout) está funcionando corretamente, com validação rigorosa de senha e tratamento de erros apropriado.
+- **Middleware de autenticação JWT** está implementado e aplicado nas rotas protegidas.
+- **Exclusão do usuário logado** e endpoint `/usuarios/me` para retornar dados do usuário autenticado estão funcionando.
+- **Validações nas rotas de agentes e casos** estão presentes.
+- **Estrutura do projeto** segue muito bem o padrão MVC, com controllers, repositories, middlewares e rotas bem organizados.
+- Você também implementou os bônus de filtragem e busca, além do endpoint para buscar casos do agente e agente do caso, o que mostra iniciativa! 🌟
 
 ---
 
-### 2. **Falhas em endpoints de agentes e casos (status code 400 e 404 em várias situações)**
+### 🚨 Onde precisamos focar para destravar os testes que falharam
 
-**Testes que falharam:**  
-- `AGENTS: Cria agentes corretamente com status code 201`  
-- `AGENTS: Lista todos os agentes corretamente`  
-- `AGENTS: Busca agente por ID`  
-- `AGENTS: Atualiza dados do agente com PUT e PATCH`  
-- `AGENTS: Deleta agente corretamente`  
-- `AGENTS: Recebe status 400 para payload incorreto`  
-- `AGENTS: Recebe status 404 para agente inexistente ou ID inválido`  
-- `CASES: Cria, lista, busca, atualiza, deleta casos`  
-- `CASES: Recebe status 400 e 404 para payload e IDs inválidos`
+Você teve uma série de falhas nos testes básicos relacionados a **agentes** e **casos** — criação, listagem, busca, atualização (PUT e PATCH) e deleção, além de erros esperados para payloads inválidos e IDs mal formatados. Isso indica que a principal área a revisar é o funcionamento completo dessas rotas sensíveis.
 
-**Análise:**  
-Você implementou muito bem a lógica dos controllers e repositories para agentes e casos, incluindo validações, erros customizados e respostas corretas. No entanto, os testes indicam que algumas validações específicas podem estar inconsistentes, especialmente:
-
-- Validação dos IDs numéricos:  
-  Nos controllers, você converte os IDs com `Number(req.params.id)`, mas não está tratando casos onde `Number('abc')` resulta em `NaN`. Embora você verifique isso em alguns lugares, em outros pode faltar. Exemplo:
-
-```js
-const id = Number(req.params.id);
-if (Number.isNaN(id)) {
-  return res.status(404).json({ message: "ID inválido" });
-}
-```
-
-Certifique-se de que essa validação está presente em todas as rotas que recebem IDs.
-
-- Validação de status dos casos:  
-  No `casosController.js`, você tem a função `isValidStatus` que aceita apenas `'aberto'` ou `'solucionado'`, mas no método `index` você aceita `'aberto'`, `'fechado'` e `'em_andamento'` no filtro, o que gera inconsistência.
-
-```js
-if (status && !['aberto', 'fechado', 'em_andamento'].includes(status)) {
-  return res.status(400).json({ message: 'Status inválido' });
-}
-```
-
-Já na criação e atualização, aceita só `'aberto'` e `'solucionado'`.
-
-**Como corrigir:**  
-Padronize os status permitidos para `'aberto'` e `'solucionado'` em todos os lugares, incluindo filtros e validações. Por exemplo:
-
-```js
-if (status && !['aberto', 'solucionado'].includes(status)) {
-  return res.status(400).json({ message: 'Status inválido' });
-}
-```
-
-- Validação de payloads:  
-  Para os erros 400 em payload incorreto, verifique se está validando todos os campos obrigatórios e tipos corretamente, e respondendo com mensagens claras. Você já usa um array de erros, o que é ótimo! Apenas garanta que todos os campos estejam validados em todos os métodos (POST, PUT, PATCH).
+Vou destrinchar os principais motivos que identifiquei para esses erros:
 
 ---
 
-### 3. **Middleware de autenticação e proteção das rotas**
+## 1. Testes de agentes e casos falharam — Por quê?
 
-Os testes indicam que as rotas protegidas retornam 401 quando o token está ausente ou inválido, o que é correto.
+### Problema raiz: **Rotas protegidas estão bloqueando acesso sem token, mas o código dos controllers não está garantindo o tratamento correto para payloads inválidos e a validação dos dados está incompleta em alguns pontos.**
 
-**Análise:**  
-Seu middleware `authMiddleware.js` está bem implementado, verificando o header `Authorization` e validando o token JWT com `jwt.verify`. Ele popula `req.user` com `id` e `email` do token.
+### Análise detalhada:
 
-Só fique atento a:
+- **Validação de payloads incompleta ou inconsistência no tratamento de erros**
 
-- Garantir que o token JWT está sendo gerado com a propriedade `sub` contendo o `id` do usuário, para que o middleware consiga ler `payload.sub`.
-- Confirmar que a variável `JWT_SECRET` está definida no `.env` e que o token é assinado com ela.
+  Por exemplo, no `agentesController.js`, nos métodos `create` e `update`, você faz uma validação manual dos campos e, em caso de erro, usa o helper `badRequest`. Isso está correto, mas a validação pode estar insuficiente para cobrir todos os casos testados, especialmente para payloads "em formato incorreto" (como campos extras, tipos errados, ou campos faltantes).
 
----
+  Além disso, o uso do `badRequest` está correto, mas não sabemos se o helper está retornando exatamente o formato esperado pelos testes. Isso pode gerar falhas.
 
-### 4. **Estrutura de Diretórios**
+- **Tratamento de IDs inválidos e inexistentes**
 
-Sua estrutura está bastante alinhada com o esperado, incluindo as pastas:
+  Você trata bem IDs inválidos (não numéricos) e retorna 404 quando o recurso não existe, o que é ótimo.
 
-- `controllers/` com os controllers necessários  
-- `repositories/` com `usuariosRepository.js`  
-- `routes/` com `authRoutes.js`  
-- `middlewares/` com `authMiddleware.js`  
-- `db/` com migrations, seeds e `db.js`  
-- `utils/` com `errorHandler.js`
+- **Middleware de autenticação está correto, mas o uso dele pode estar bloqueando testes**
 
-Ótimo trabalho em seguir essa arquitetura! Isso facilita muito a manutenção e testes.
+  Os testes que falharam para agentes e casos incluem o 401 quando não há token, e esses você passou, mostrando que o middleware funciona.
 
----
+- **Possível problema com a migration e seed da tabela agentes**
 
-## 💡 Recomendações de Aprendizado
+  Como os testes básicos de agentes falharam, pode ser que a tabela `agentes` não esteja populada corretamente, ou que o campo `dataDeIncorporacao` esteja com nome diferente no banco (ex: camelCase vs snake_case). Isso pode gerar problemas ao inserir ou buscar dados.
 
-Para ajudar a corrigir e aprimorar seu projeto, recomendo fortemente os seguintes recursos:
+  No seu arquivo de migration `solution_migrations.js`, você criou a tabela `agentes` com o campo `dataDeIncorporacao` (camelCase). Porém, no seed, você usa o mesmo nome. Isso é correto, mas dependendo da configuração do Knex e do PostgreSQL, pode haver problemas com o case sensitivity.
 
-- Para alinhar suas migrations e seeds, e garantir que o banco está configurado corretamente com Docker e Knex:  
-  https://www.youtube.com/watch?v=uEABDBQV-Ek&t=1s  
-  https://www.youtube.com/watch?v=dXWy_aGCW1E  
+  **Dica:** O padrão em bancos relacionais é usar snake_case para nomes de colunas. Usar camelCase pode causar problemas no mapeamento e nas queries.
 
-- Para dominar o uso do Knex Query Builder e evitar problemas em queries:  
-  https://www.youtube.com/watch?v=GLwHSs7t3Ns&t=4s  
+- **Possível problema no retorno dos dados na criação**
 
-- Para entender profundamente autenticação, JWT e hashing de senhas com bcrypt:  
-  https://www.youtube.com/watch?v=Q4LQOfYwujk (conceitos básicos de segurança)  
-  https://www.youtube.com/watch?v=keS0JWOypIU (JWT na prática)  
-  https://www.youtube.com/watch?v=L04Ln97AwoY (JWT e bcrypt juntos)  
+  No seu `agentesRepository.js`, ao criar um agente, você faz:
 
-- Para estruturar seu projeto com boas práticas MVC e organização:  
-  https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s  
-
----
-
-## ✍️ Exemplos de Correções
-
-### Ajuste no `usuariosRepository.js` para alinhar com o controller:
-
-```js
-async function create({ nome, email, senha }) {
-  const [id] = await db('usuarios')
-    .insert({ nome, email, senha })
-    .returning('id');
-  return findById(typeof id === 'object' ? id.id : id);
-}
-```
-
-E no `authController.register`:
-
-```js
-const senhaHash = await bcrypt.hash(senha, SALT_ROUNDS);
-const user = await usuariosRepository.create({ nome, email, senha: senhaHash });
-```
-
----
-
-### Padronização do status no `casosController.js`:
-
-```js
-function isValidStatus(status) {
-  return status === 'aberto' || status === 'solucionado';
-}
-
-async function index(req, res) {
-  const { agente_id, status, q } = req.query;
-
-  if (status && !['aberto', 'solucionado'].includes(status)) {
-    return res.status(400).json({ message: 'Status inválido' });
+  ```js
+  async function create(agent) {
+    const [id] = await db('agentes').insert(agent).returning('id');
+    return findById(id);
   }
+  ```
 
-  // resto do código...
-}
-```
+  Isso está correto, mas se o `id` retornado for um objeto (por exemplo `{ id: 1 }`), isso pode causar problemas. Você fez esse tratamento no `usuariosRepository.js`, mas não no `agentesRepository.js`. Isso pode gerar retorno errado e falha nos testes.
+
+- **Validação de payloads com campos extras**
+
+  Nos controllers de agentes e casos, você não valida se o payload tem campos extras não permitidos. Nos testes base, existe um teste que espera erro 400 para payload em formato incorreto, que provavelmente inclui campos extras.
+
+  Já no `authController.js` você faz essa validação bem feita:
+
+  ```js
+  const allowedFields = ["nome", "email", "senha"];
+  const extraFields = Object.keys(req.body).filter(
+    (key) => !allowedFields.includes(key)
+  );
+
+  if (extraFields.length > 0) {
+    return res.status(400).json({
+      status: 400,
+      message: "Parâmetros inválidos",
+      errors: extraFields.map((field) => ({
+        [field]: "Campo não é permitido",
+      })),
+    });
+  }
+  ```
+
+  Mas nos controllers de agentes e casos isso não ocorre. Isso pode estar causando falha nos testes que validam payloads incorretos.
 
 ---
 
-### Validação rigorosa de IDs nos controllers (exemplo para agentes):
+## 2. Recomendações práticas para corrigir e melhorar
+
+### a) Padronize nomes de colunas para snake_case na migration e no código
+
+Isso evita problemas com banco e Knex.
+
+Exemplo na migration `solution_migrations.js`:
 
 ```js
-const id = Number(req.params.id);
-if (Number.isNaN(id)) {
-  return res.status(404).json({ message: "ID inválido" });
+table.date('data_de_incorporacao').notNullable();
+```
+
+E no seed e código, use `data_de_incorporacao`.
+
+### b) Valide campos extras nos payloads de agentes e casos
+
+No início da função `create` e `update` dos controllers, faça algo parecido com isso:
+
+```js
+const allowedFields = ['nome', 'dataDeIncorporacao', 'cargo'];
+const extraFields = Object.keys(req.body).filter(key => !allowedFields.includes(key));
+if (extraFields.length > 0) {
+  return res.status(400).json({
+    status: 400,
+    message: 'Parâmetros inválidos',
+    errors: extraFields.map(field => ({ [field]: 'Campo não é permitido' })),
+  });
 }
 ```
 
-Faça isso em todas as rotas que recebem IDs para evitar erros e garantir uma resposta consistente.
+Isso vai garantir que payloads com campos inesperados sejam rejeitados como esperado nos testes.
+
+### c) Ajuste o retorno do `create` no `agentesRepository.js`
+
+Assim como fez no `usuariosRepository.js`, trate o retorno do `insert` para garantir que o `id` seja um número:
+
+```js
+async function create(agent) {
+  const [id] = await db('agentes').insert(agent).returning('id');
+  return findById(typeof id === 'object' ? id.id : id);
+}
+```
+
+### d) Verifique o helper `badRequest`
+
+Garanta que ele retorne um status 400 e um JSON com o formato esperado pelo teste (possivelmente `{ status: 400, errors: [...] }`).
+
+Se estiver usando algo como:
+
+```js
+function badRequest(res, errors) {
+  return res.status(400).json({ status: 400, errors });
+}
+```
+
+Perfeito! Caso contrário, ajuste.
+
+### e) Considere usar snake_case também no código (campos do JSON)
+
+Se for muito trabalhoso, pelo menos garanta consistência entre banco e código para evitar erros.
 
 ---
 
-## 📋 Resumo dos Pontos para Melhorar
+## 3. Sobre os testes bônus que você passou
 
-- Corrigir o parâmetro `senhaHash` vs `senha` entre controller e repositório para criação de usuários.  
-- Padronizar os valores válidos para o campo `status` dos casos em todas as validações e filtros (`'aberto'` e `'solucionado'`).  
-- Garantir validação rigorosa de IDs numéricos em todas as rotas que recebem parâmetros `id`.  
-- Revisar as mensagens de erro e status codes para garantir que estejam consistentes com o esperado nos testes.  
-- Confirmar que o `.env` contém `JWT_SECRET` e `JWT_EXPIRES_IN` definidos corretamente para o JWT funcionar.  
+Você mandou muito bem nos bônus! 🎉
+
+- Implementou corretamente os filtros por status, agente e keywords.
+- Criou o endpoint `/usuarios/me`.
+- Implementou os endpoints para buscar casos do agente e agente do caso.
+
+Esses extras mostram que você tem uma ótima compreensão do projeto e está indo além do básico — parabéns! 👏
 
 ---
 
-Matheus, você está no caminho certo e com uma base muito boa! 💥 Corrigindo esses detalhes, sua API vai ficar muito mais robusta, segura e alinhada com o esperado. Continue assim, revisando cada ponto com calma — você já tem o essencial implementado, agora é lapidar os detalhes! Se precisar, volte aos vídeos que te indiquei para aprofundar os conceitos, principalmente sobre autenticação e Knex.
+## 4. Sobre a estrutura do projeto
 
-Qualquer dúvida, estou aqui para ajudar! Vamos juntos garantir que sua API seja digna de produção e pronta para proteger os dados do Departamento de Polícia! 🚓👮‍♂️💻
+Sua estrutura está muito boa e segue o padrão esperado. Só fique atento para manter:
 
-Boa codificação! 🚀✨
+- O arquivo `authRoutes.js` na pasta `routes/`
+- O middleware `authMiddleware.js` na pasta `middlewares/`
+- A migration para `usuarios` na pasta `db/migrations/`
+- Os seeds na pasta `db/seeds/`
+
+Tudo isso está correto no seu projeto, continue assim!
+
+---
+
+## 5. Recursos recomendados para você
+
+Para ajudar a corrigir e entender melhor esses pontos, recomendo fortemente que você assista a esses vídeos:
+
+- Sobre autenticação e JWT, para consolidar conceitos e práticas:  
+  https://www.youtube.com/watch?v=Q4LQOfYwujk (Esse vídeo, feito pelos meus criadores, fala muito bem sobre os conceitos básicos e fundamentais da cibersegurança e autenticação.)
+
+- Para entender melhor o uso do JWT e bcrypt juntos:  
+  https://www.youtube.com/watch?v=L04Ln97AwoY
+
+- Para aprimorar o uso do Knex e evitar problemas com migrations e queries:  
+  https://www.youtube.com/watch?v=GLwHSs7t3Ns&t=4s (Guia detalhado do Knex Query Builder)
+
+- Para validar e organizar seu projeto seguindo boas práticas MVC:  
+  https://www.youtube.com/watch?v=bGN_xNc4A1k&t=3s
+
+---
+
+## 6. Resumo rápido dos principais pontos para focar:
+
+- [ ] Ajustar o nome do campo `dataDeIncorporacao` para snake_case (`data_de_incorporacao`) na migration, seeds e código para evitar problemas com o banco.
+- [ ] Implementar validação de campos extras nos payloads das rotas de agentes e casos, retornando erro 400 quando existirem.
+- [ ] Corrigir o retorno do `create` no `agentesRepository.js` para tratar o retorno do insert corretamente (como fez no usuários).
+- [ ] Garantir que o helper `badRequest` retorne o formato JSON esperado nos testes.
+- [ ] Revisar a consistência dos nomes dos campos entre banco e código para evitar erros sutis.
+- [ ] Revisar os testes que falharam para entender exatamente quais payloads e respostas eles esperam (ex.: formato de erro, status code).
+- [ ] Continuar usando o middleware de autenticação para proteger rotas, que você já fez corretamente.
+
+---
+
+Matheusferx, você está no caminho certo! 💪✨ Com essas melhorias, tenho certeza que seu projeto vai destravar todos os testes e ficar pronto para produção, com segurança e qualidade.
+
+Se precisar de ajuda para implementar alguma dessas correções ou quiser entender melhor algum conceito, pode contar comigo! Estou aqui para ajudar você a crescer como dev! 🚀😉
+
+Boa sorte e continue firme! 👊💙
+
+Um abraço virtual! 🤗
 
 > Caso queira tirar uma dúvida específica, entre em contato com o Chapter no nosso [discord](https://discord.gg/DryuHVnz).
 
