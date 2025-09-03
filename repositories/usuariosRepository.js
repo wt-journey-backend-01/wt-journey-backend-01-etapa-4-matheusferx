@@ -8,9 +8,9 @@ function findById(id) {
   return db('usuarios').where({ id }).first();
 }
 
-async function create({ nome, email, senhaHash }) {
+async function create({ nome, email, senha }) {
   const [id] = await db('usuarios')
-    .insert({ nome, email, senha: senhaHash })
+    .insert({ nome, email, senha })
     .returning('id');
   return findById(typeof id === 'object' ? id.id : id);
 }

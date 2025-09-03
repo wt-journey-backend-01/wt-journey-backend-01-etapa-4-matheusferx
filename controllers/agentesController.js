@@ -44,6 +44,9 @@ async function create(req, res) {
 
 async function update(req, res) {
   const id = Number(req.params.id);
+  if (Number.isNaN(id)) {
+    return res.status(404).json({ message: "ID inválido" });
+  }
   const agentExists = await agentesRepository.findById(id);
   if (!agentExists) return res.status(404).send();
 
@@ -63,6 +66,9 @@ async function update(req, res) {
 
 async function partialUpdate(req, res) {
   const id = Number(req.params.id);
+  if (Number.isNaN(id)) {
+    return res.status(404).json({ message: "ID inválido" });
+  }
   const agent = await agentesRepository.findById(id);
   if (!agent) return res.status(404).send();
 
@@ -87,6 +93,9 @@ async function partialUpdate(req, res) {
 
 async function remove(req, res) {
   const id = Number(req.params.id);
+  if (Number.isNaN(id)) {
+    return res.status(404).json({ message: "ID inválido" });
+  }
   const agent = await agentesRepository.findById(id);
   if (!agent) return res.status(404).send();
   await agentesRepository.remove(id);
@@ -96,6 +105,9 @@ async function remove(req, res) {
 // Bonus: GET /agentes/:id/casos
 async function getCasosByAgente(req, res) {
   const agenteId = Number(req.params.id);
+  if (Number.isNaN(agenteId)) {
+    return res.status(404).json({ message: "ID inválido" });
+  }
   const agent = await agentesRepository.findById(agenteId);
   if (!agent) return res.status(404).send();
 

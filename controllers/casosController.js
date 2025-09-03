@@ -3,14 +3,14 @@ const agentesRepository = require('../repositories/agentesRepository');
 const { badRequest } = require('../utils/errorHandler');
 
 function isValidStatus(status) {
-  return status === 'aberto' || status === 'solucionado';
+  return ['aberto', 'solucionado'].includes(status);
 }
 
 // controllers/casosController.js
 async function index(req, res) {
   const { agente_id, status, q } = req.query;
 
-  if (status && !['aberto', 'fechado', 'em_andamento'].includes(status)) {
+  if (status && !isValidStatus(status)) {
     return res.status(400).json({ message: 'Status inválido' });
   }
 
@@ -34,6 +34,11 @@ async function show(req, res) {
 
 async function create(req, res) {
   const { titulo, descricao, status, agente_id } = req.body;
+
+  if (status && !isValidStatus(status)) {
+    return res.status(400).json({ message: 'Status inválido' });
+  }
+
   const errors = [];
 
   if (!titulo) errors.push({ titulo: "Campo 'titulo' é obrigatório" });
@@ -53,10 +58,18 @@ async function create(req, res) {
 
 async function update(req, res) {
   const id = Number(req.params.id);
+  if (Number.isNaN(id)) {
+    return res.status(404).json({ message: "ID inválido" });
+  }
   const existing = await casosRepository.findById(id);
   if (!existing) return res.status(404).send();
 
   const { titulo, descricao, status, agente_id } = req.body;
+
+  if (status && !isValidStatus(status)) {
+    return res.status(400).json({ message: 'Status inválido' });
+  }
+
   const errors = [];
   if (!titulo) errors.push({ titulo: "Campo 'titulo' é obrigatório" });
   if (!descricao) errors.push({ descricao: "Campo 'descricao' é obrigatório" });
@@ -74,6 +87,9 @@ async function update(req, res) {
 
 async function partialUpdate(req, res) {
   const id = Number(req.params.id);
+  if (Number.isNaN(id)) {
+    return res.status(404).json({ message: "ID inválido" });
+  }
   const existing = await casosRepository.findById(id);
   if (!existing) return res.status(404).send();
 
@@ -100,6 +116,9 @@ async function partialUpdate(req, res) {
 
 async function remove(req, res) {
   const id = Number(req.params.id);
+  if (Number.isNaN(id)) {
+    return res.status(404).json({ message: "ID inválido" });
+  }
   const existing = await casosRepository.findById(id);
   if (!existing) return res.status(404).send();
   await casosRepository.remove(id);
@@ -109,6 +128,9 @@ async function remove(req, res) {
 // Bonus: GET /casos/:caso_id/agente -> retorna dados do agente do caso
 async function getAgenteByCaso(req, res) {
   const casoId = Number(req.params.caso_id);
+  if (Number.isNaN(casoId)) {
+    return res.status(404).json({ message: "ID inválido" });
+  }
   const caso = await casosRepository.findById(casoId);
   if (!caso) return res.status(404).send();
 
